@@ -22,7 +22,7 @@ void receiveMessages() {
         int bytes_read = recv(client_socket, buffer, sizeof(buffer), 0);
 
         if (bytes_read <= 0) {
-            cout << "Disconnected from server" << endl;
+            cout << "Desconectado do servidor." << endl;
             close(client_socket);
             exit(0);
         }
@@ -33,13 +33,13 @@ void receiveMessages() {
 
 void sendMessage(const string& message) {
     if (send(client_socket, message.c_str(), message.size(), 0) == -1) {
-        cerr << "Failed to send message to server" << endl;
+        cerr << "Falha em enviar mensagem ao servidor." << endl;
     }
 }
 
 void handleSignal(int signal) {
     if (signal == SIGINT) {
-        cout << "Closing connection..." << endl;
+        cout << "Fechando conexão..." << endl;
         close(client_socket);
         exit(0);
     }
@@ -51,38 +51,38 @@ int main() {
     struct sockaddr_in server_addr;
     char buffer[MAX_MESSAGE_SIZE];
 
-    // Create socket
+    // Criacao de socket
     if ((client_socket = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Failed to create socket");
+        perror("Falha em criar o socket");
         exit(EXIT_FAILURE);
     }
 
-    // Set server address and port
+    // Configurando endereço e porta do servidor
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = inet_addr(SERVER_IP);
     server_addr.sin_port = htons(PORT);
 
-    // Connect to server
+    // Conexao com servidor
     if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Failed to connect to server");
+        perror("Falha em se conectar ao servidor");
         exit(EXIT_FAILURE);
     }
 
-    cout << "Connected to server\n\n";
+    cout << "Conectado ao servidor\n";
 
     // Start receiving thread
     thread receive_thread(receiveMessages);
 
     // Set an username
     string username;
-    cout << "Enter your username: ";
+    cout << "Insira seu nome de usuario: ";
     getline(cin, username);
     sendMessage(username);
 
     // Receive welcome message from server
     memset(buffer, 0, MAX_MESSAGE_SIZE);
     if (recv(client_socket, buffer, MAX_MESSAGE_SIZE, 0) <= 0) {
-        std::cerr << "Error receiving welcome message from the server." << std::endl;
+        std::cerr << "Erro ao receber mensagem de boas vindas do servidor." << std::endl;
         return -1;
     }
 
@@ -91,7 +91,7 @@ int main() {
     // Communication loop
     string message;
     while (true) {
-        cout << "Enter a message: ";
+        cout << "Insira sua mensagem: ";
         getline(cin, message);
 
         // Check if it's a command
@@ -101,7 +101,7 @@ int main() {
             sendMessage("/ping");
             continue;
         } else if (message == "/connect") {
-            cout << "You are already connected" << endl;
+            cout << "Você ja esta conectado" << endl;
             continue;
         }
 
