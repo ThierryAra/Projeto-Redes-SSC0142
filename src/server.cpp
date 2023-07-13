@@ -4,19 +4,89 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <vector>
+
+using namespace std;
 
 const int PORT = 8080;
 const int BUFFER_SIZE = 4096;
 
+struct ClientData {
+    int clientSocket;
+    string nickname;
+    bool mute = false;
+};
+
+vector<ClientData> clients;
+
+void broadcastMessage(const string& message) {
+    for (const auto& client : clients) {
+        string broadcastMessage = client.nickname + " > " + message + '\n';
+        send(client.clientSocket, broadcastMessage.c_str(), broadcastMessage.length(), 0);
+    }
+}
+
+void *clientThread(void *arg) {
+    ClientData clientData = *(static_cast<ClientData*>(arg));
+    int clientSocket = clientData.clientSocket;
+    string clientNickname = clientData.nickname;
+    char buffer[BUFFER_SIZE];
+
+    // Enviar mensagem de boas-vindas para o cliente
+    string welcomeMessage = "Bem-vindo ao chat! Você está conectado como: " + clientNickname;
+    send(clientSocket, welcomeMessage.c_str(), welcomeMessage.length(), 0);
+
+    while (true) {
+        // Receber mensagem do cliente
+        memset(buffer, 0, BUFFER_SIZE);
+        if (recv(clientSocket, buffer, BUFFER_SIZE, 0) <= 0) {
+            cerr << "Erro ao receber mensagem do cliente: " << clientNickname << endl;
+            break;
+        }
+
+        string receivedMessage(buffer);
+
+        if (receivedMessage == "/quit") {
+            cout << "Cliente desconectado: " << clientNickname << endl;
+            break;
+        } else if (receivedMessage == "/ping") {
+            // Enviar resposta de ping para o cliente
+            string pingResponse = "pong\n";
+            send(clientSocket, pingResponse.c_str(), pingResponse.length(), 0);
+        }
+
+        cout << "Cliente " << clientNickname << ": " << receivedMessage << endl;
+
+        // Enviar mensagem para todos os clientes
+        broadcastMessage(clientNickname + ": " + receivedMessage);
+    }
+
+    // Fechar o socket do cliente
+    close(clientSocket);
+
+    // Remover o cliente da lista de clientes conectados
+    for (auto it = clients.begin(); it != clients.end(); ++it) {
+        if (it->clientSocket == clientSocket) {
+            clients.erase(it);
+            break;
+        }
+    }
+
+    delete static_cast<ClientData*>(arg);
+    pthread_exit(NULL);
+}
+
 int main() {
-    int serverSocket, clientSocket;
-    struct sockaddr_in serverAddress, clientAddress;
+    int serverSocket;
+    struct sockaddr_in serverAddress;
+    pthread_t threadId;
     char buffer[BUFFER_SIZE];
 
     // Criação do socket
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
-        std::cerr << "Erro ao criar o socket." << std::endl;
+        cerr << "Erro ao criar o socket." << endl;
         return -1;
     }
 
@@ -27,67 +97,59 @@ int main() {
 
     // Bind do socket ao endereço
     if (bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) {
-        std::cerr << "Erro ao fazer o bind." << std::endl;
+        cerr << "Erro ao fazer o bind." << endl;
         return -1;
     }
 
     // Espera por conexões
     if (listen(serverSocket, 5) < 0) {
-        std::cerr << "Erro ao esperar por conexões." << std::endl;
+        cerr << "Erro ao esperar por conexões." << endl;
         return -1;
     }
 
-    std::cout << "Aguardando conexões..." << std::endl;
-
-    socklen_t clientAddressLength = sizeof(clientAddress);
-    clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLength);
-    if (clientSocket < 0) {
-        std::cerr << "Erro ao aceitar conexão." << std::endl;
-        return -1;
-    }
-
-    std::cout << "Conexão estabelecida." << std::endl;
+    cout << "Aguardando conexões..." << endl;
 
     while (true) {
-        // Receber mensagem do cliente
+        int clientSocket;
+        struct sockaddr_in clientAddress;
+        socklen_t clientAddressLength = sizeof(clientAddress);
+
+        // Aceita conexão do cliente
+        clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddress, &clientAddressLength);
+        if (clientSocket < 0) {
+            cerr << "Erro ao aceitar conexão." << endl;
+            break;
+        }
+
+        cout << "Conexão estabelecida." << endl;
+
+        // Receber apelido do cliente
         memset(buffer, 0, BUFFER_SIZE);
         if (recv(clientSocket, buffer, BUFFER_SIZE, 0) <= 0) {
-            std::cerr << "Erro ao receber mensagem do cliente." << std::endl;
+            cerr << "Erro ao receber apelido do cliente." << endl;
             break;
         }
 
-        std::string receivedMessage(buffer);
+        string clientNickname(buffer);
 
-        if (receivedMessage == "exit") {
-            std::cout << "Cliente desconectado." << std::endl;
-            break;
-        }
+        cout << "Cliente conectado: " << clientNickname << endl;
 
-        std::cout << "Cliente: " << receivedMessage << std::endl;
+        // Criar estrutura de dados para o cliente
+        ClientData* clientData = new ClientData;
+        clientData->clientSocket = clientSocket;
+        clientData->nickname = clientNickname;
 
-        // Enviar mensagem para o cliente
-        std::string response;
-        std::cout << "Servidor: ";
-        std::getline(std::cin, response);
+        // Adicionar cliente à lista de clientes conectados
+        clients.push_back(*clientData);
 
-        if (response == "exit") {
-            std::cout << "Desconectando..." << std::endl;
-            break;
-        }
-
-        if (response.length() > BUFFER_SIZE) {
-            std::cout << "A mensagem é muito grande." << std::endl;
-            continue;
-        }
-
-        if (send(clientSocket, response.c_str(), response.length(), 0) < 0) {
-            std::cerr << "Erro ao enviar mensagem para o cliente." << std::endl;
+        // Criar thread para lidar com o cliente
+        if (pthread_create(&threadId, NULL, clientThread, static_cast<void*>(clientData)) != 0) {
+            cerr << "Erro ao criar a thread para o cliente." << endl;
             break;
         }
     }
 
-    // Fechar os sockets
-    close(clientSocket);
+    // Fechar o socket do servidor
     close(serverSocket);
 
     return 0;
