@@ -1,8 +1,8 @@
 #include <iostream>
 #include <pthread.h>
 #include <signal.h>
-#include "client.hpp"
-#include "socket.hpp"
+#include "../libraries/client.hpp"
+#include "../libraries/socket.hpp"
 
 using namespace std;
 
@@ -23,7 +23,7 @@ void quit(int sock) {
     exit(0);
 }
 
-/* Ignorando 'crtlCHandler' padrao */
+// Ignorando 'crtlCHandler' padrao
 void ctrlCHandler(int signal) {
     cout << "Para sair do programa use /q" << endl;
 }
@@ -43,7 +43,7 @@ void addEndStr(char *str, char newChar) {
     else str[size - 1] = newChar;
 }
 
-/* Thread para receber mensagens do servidor */
+// Thread para receber mensagens do servidor
 void *receiveMessageHandler(void *sock) {
     char buffer[MESSAGE_SIZE + NICKNAME_SIZE + CHANNEL_NAME_SIZE + 5] = {};
     int rcv;
@@ -90,7 +90,7 @@ void *receiveMessageHandler(void *sock) {
     }
 }
 
-/* Thread para enviar mensagens ao servidor */
+// Thread para enviar mensagens ao servidor
 void *sendMessageHandler(void *sock) {
     char buffer[MESSAGE_SIZE] = {};
     string message;
@@ -173,7 +173,7 @@ int main() {
         else cout << "Comando desconhecido" << endl;
     }
 
-    // Caos usuario continue com a conexao
+    // Caso usuario continue com a conexao
     if (connect(sock, (struct sockaddr *)&serverAddr, serverAddrLen) < 0)
         errorMessage(sock, "\nErro de conexao");
 
