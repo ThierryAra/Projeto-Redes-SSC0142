@@ -10,7 +10,11 @@ compile_server:
 compile_client:
 	g++ $(CLIENT_FILE) -o $(RUN_CLIENT) -w
 
-all: compile_server compile_client
+create_bin:
+	rm ../bin -rf
+	mkdir ../bin
+
+all: create_bin compile_server compile_client
 
 server:
 	$(RUN_SERVER)
