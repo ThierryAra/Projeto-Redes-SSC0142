@@ -309,17 +309,17 @@ void joinChannel(char *channelName, ChannelList *channel, ClientList *client) {
         tmp = tmp->next;
     }
 
-    // Creating new channel
+    // Criando um novo canal
     char message[MESSAGE_SIZE];
     if (createNewChannel) {
         // Reached the max number of channels
         if (client->mainNode->numberOfChannels == MAX_CHANNELS) {
-            sprintf(message, "Could not create %s. Limit of channels reached\n", channelName);
+            sprintf(message, "Nao foi possivel criar o canal '%s'. Limite de no numero canais atingido.\n", channelName);
             serverMessage(channel, client->mainNode, message);
             return;
         }
 
-        // Creating a new node to a new channel
+        // Criando um novo no para um novo canal
         ClientList *newClient = createClient(client->socket, client->ip);
         newClient->mainNode = client->mainNode;
         strcpy(newClient->name, client->mainNode->name);
@@ -334,7 +334,7 @@ void joinChannel(char *channelName, ChannelList *channel, ClientList *client) {
         newChannel->clients->next = newClient;
         newClient->prev = newChannel->clients;
 
-        // Switching client channel
+        // Trocando canal do cliente
         client->mainNode->activeChannel = newChannel;
         client->mainNode->activeInstance = newClient;
 
@@ -346,9 +346,9 @@ void joinChannel(char *channelName, ChannelList *channel, ClientList *client) {
         }
         client->mainNode->numberOfChannels++;
 
-        sprintf(message, "/channel %s Created and switched to channel", channelName);
+        sprintf(message, "/channel %s Criado. Voce foi tranferido para este canal.", channelName);
         serverMessage(channel, client->mainNode, message);
-    } else { // The channel alredy exists, just switch the client active channel
+    } else { // O canal ja existe, basta trocar o canal ativo do cliente
         bool isInChannel = false;
         for (int i = 0; i < MAX_CHANNELS; ++i) {
             if (!strcmp(client->channels[i], tmp->name)) {
@@ -365,17 +365,17 @@ void joinChannel(char *channelName, ChannelList *channel, ClientList *client) {
                     instance = instance->next;
                 }
 
-                sprintf(message, "/channel %s Switched to channel", channelName);
+                sprintf(message, "/channel %s Transferido para o canal.", channelName);
                 serverMessage(channel, client->mainNode, message);
 
                 break;
             }
         }
 
-        // The channel exists but the client isn't in the channel, append the client to the channel
+        // O canal existe, mas o cliente não está no canal, anexe o cliente ao canal
         if (!isInChannel) {
             if (client->mainNode->numberOfChannels == MAX_CHANNELS) {
-                sprintf(message, "Could not join %s. Limit of channels reached.\n", channelName);
+                sprintf(message, "Nao pode se juntar %s. Limite de canais alcançado.\n", channelName);
                 serverMessage(channel, client->mainNode, message);
                 return;
             }
@@ -402,10 +402,10 @@ void joinChannel(char *channelName, ChannelList *channel, ClientList *client) {
 
             client->mainNode->numberOfChannels++;
 
-            sprintf(message, "/channel %s You joined the channel", channelName);
+            sprintf(message, "/channel %s Voce se juntou ao canal.", channelName);
             serverMessage(channel, newClient->mainNode, message);
 
-            sprintf(message, "%s - %s joined the channel.\n", channelName, newClient->name);
+            sprintf(message, "%s - %s se juntou ao canal.\n", channelName, newClient->name);
             sendAllClients(channel, tmp->clients, newClient->mainNode, message);
         }
     }
@@ -429,8 +429,8 @@ bool whoIs(ClientList *admin, char *username) {
         tmp = tmp->next;
     }
 
-    // The client isn't in the channel
-    sprintf(buffer, "User '%s' is not on this channel\n", username);
+    // O cliente especificado nao esta no canal
+    sprintf(buffer, "Usuario '%s' nao esta no canal\n", username);
     int snd = send(admin->socket, buffer, MESSAGE_SIZE, 0);
     if (snd < 0)
         return false;
@@ -466,7 +466,7 @@ void muteUser(ChannelList *channel, ClientList *admin, char *username, bool mute
     }
 
     // If the client isn't in the channel
-    sprintf(message, "User '%s' is not on this channel\n", username);
+    sprintf(message, "Usuario '%s' nao esta no canal.\n", username);
     send(admin->socket, message, MESSAGE_SIZE, 0);
 }
 
@@ -560,7 +560,7 @@ void leaveChannel(ChannelList *channel, ClientList *client, char *channelName) {
 
             tmp->mainNode->numberOfChannels--;
 
-            // Clients who stayed in the channel message
+            // Clientes que ficaram no canal mandem mensagem
             sprintf(message, "%s - %s saiu do canal.\n", tmpChannel->name, tmp->name);
             sendAllClients(channel, tmpChannel->clients, tmp->mainNode, message);
 
